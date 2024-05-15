@@ -3,13 +3,8 @@
 #else
 #include <stdint.h>
 #endif
-#ifdef _WIN32
-#include <stdio.h>
-#define FOPEN(fp, filename, mode) fopen_s(&fp, filename, mode)
-#else
-#include <stdio.h>
+
 #define FOPEN(fp, filename, mode) ((fp = fopen(filename, mode)) == NULL)
-#endif
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
@@ -74,37 +69,39 @@
         return 0;                                   \
     } while (0)
 
+#pragma pack(push, 1) // Disable structure member alignment
+
 typedef struct request
 {
     uint16_t opcode;
     uint8_t filename_mode[0];
-} __attribute__((packed)) request_pkt;
+} request_pkt;
 
 typedef struct data
 {
     uint16_t opcode;
     uint16_t block_number;
     uint8_t data[0];
-} __attribute__((packed)) data_pkt;
+} data_pkt;
 
 typedef struct ack
 {
     uint16_t opcode;
     uint16_t block_number;
-} __attribute__((packed)) ack_pkt;
+} ack_pkt;
 
 typedef struct error
 {
     uint16_t opcode;
     uint16_t error_code;
     uint8_t error_string[0];
-} __attribute__((packed)) error_pkt;
+} error_pkt;
 
 typedef struct option_packet
 {
     uint16_t opcode;
     uint8_t option[0];
-} __attribute__((packed)) optn_pkt;
+} optn_pkt;
 
 typedef struct sesion_headr
 {
@@ -119,7 +116,9 @@ typedef struct sesion_headr
     uint32_t timeout;
     uint32_t current_block;
     uint32_t session_id;
-} __attribute__((packed)) session_t;
+} session_t;
+
+#pragma pack(pop) // Restore the previous structure member alignment
 
 session_t sessions[MAX_SESSION];
 uint32_t session_flag[MAX_SESSION] = {0};
@@ -145,10 +144,10 @@ void printHeader()
     printf("*   yamin.haque@bdcom.com.cn                           *\n");
     printf("*                                                      *\n");
     printf("*======================================================*\n");
-
 }
 
-void print_progress(size_t count, size_t max,int index) {
+void print_progress(size_t count, size_t max, int index)
+{
     char bar[BAR_WIDTH + 1];
     float progress = (float)count / max;
     int pos = progress * BAR_WIDTH;
@@ -161,7 +160,8 @@ void print_progress(size_t count, size_t max,int index) {
     fflush(stdout);
 }
 
-void print_progress_write(size_t count, size_t max, int index) {
+void print_progress_write(size_t count, size_t max, int index)
+{
     printf("\rSession %d: Received %zu blocks: %zu bytes", index, count, max);
     fflush(stdout);
 }
@@ -540,7 +540,16 @@ DWORD WINAPI RRQ_func(LPVOID arg)
     int total_read = 0;
     int total_byte = 0;
     char *position;
-    char block_space[block_size + 100];
+    char *block_space = NULL;
+
+    // Allocate memory for block_space
+    block_space = (char *)malloc((block_size + 100) * sizeof(char));
+    if (block_space == NULL)
+    {
+        // Handle memory allocation failure
+        printf("Error: Failed to allocate memory for block_space\n");
+        // Exit or take appropriate action
+    }
 
     int read_size = MAX_READ_SIZE / block_size;
 
@@ -582,8 +591,8 @@ DWORD WINAPI RRQ_func(LPVOID arg)
         position += block_read;
         total_byte += block_read;
 
-        if(session_count < 2)
-            print_progress(total_byte,tsize,index);
+        if (session_count < 2)
+            print_progress(total_byte, tsize, index);
 
         memset(&buff, 0, sizeof(buff));
 
@@ -624,7 +633,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 
             if (block_read < block_size)
             {
-                printf("\nSession %d : %s transfer complete %d blocks: %d bytes\n",index, sessions[index].filename,block_number,total_byte);
+                printf("\nSession %d : %s transfer complete %d blocks: %d bytes\n", index, sessions[index].filename, block_number, total_byte);
 
                 READ_SESSION_CLOSE(fp, socket_fd_s, index);
             }
@@ -660,7 +669,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
     int slen = sizeof(client_addrs);
     int clen = sizeof(sessions[index].client_adderess);
     client_address = sessions[index].client_adderess;
-    ssize_t c;
+    size_t c;
 
     int block_number = 0;
     int total_bytes = 0;
@@ -744,7 +753,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
     if (fp == NULL)
     {
         printf("\nfile opened failed!\n");
-         WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
+        WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
     }
 
     while (1)
@@ -769,7 +778,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
             block = ntohs(data_packet->block_number);
             memcpy(payload, data_packet->data, block_write);
 
-            print_progress_write(block,total_bytes,index);
+            print_progress_write(block, total_bytes, index);
 
             // printf("Receive packet type: %d, data block: %d\n", opcode, block);
 
@@ -803,7 +812,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
 
             if (block_write < block_size)
             {
-                printf("\nSession %d : %s receiving complete: %d bytes\n", index, sessions[index].filename,total_bytes);
+                printf("\nSession %d : %s receiving complete: %d bytes\n", index, sessions[index].filename, total_bytes);
                 WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
             }
             block_number++;
