@@ -15,6 +15,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <io.h>
+#include <time.h>
 
 #pragma comment(lib, "Ws2_32.lib")
 
@@ -23,7 +24,7 @@
 #define DATA 3
 #define ACK 4
 #define ERROR_TFTP 5
-#define BAR_WIDTH 40
+#define BAR_WIDTH 50
 
 #define ERR_FILE_NOT_FOUND 1
 #define ERR_FILE_ALREADY_EXITS 6
@@ -33,7 +34,7 @@
 #define TRANSFER_MODE_SIZE 10
 #define MAX_FILENAME_SIZE 50
 
-#define MAX_SESSION 3
+#define MAX_SESSION 10
 #define BLOCKSIZE 512
 
 #define BUFSIZE 10000
@@ -116,6 +117,7 @@ typedef struct sesion_headr
     uint32_t timeout;
     uint32_t current_block;
     uint32_t session_id;
+    // time_t last_send_time;
 } session_t;
 
 #pragma pack(pop) // Restore the previous structure member alignment
@@ -459,6 +461,9 @@ DWORD WINAPI RRQ_func(LPVOID arg)
     ack_pkt *ack_packet;
     error_pkt *erro;
 
+    uint32_t retries = 0;
+    const uint32_t max_retries = RECV_RETRIES;
+
     socket_fd_s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (socket_fd_s == INVALID_SOCKET)
@@ -555,106 +560,164 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 
     read_size = read_size * block_size;
 
+    uint32_t retry_flag = 0;
+
     while (1)
     {
-        memset(&buff, 0, sizeof(buff));
-
-        if (!total_read)
+        if (!retry_flag)
         {
-            memset(&payload, 0, sizeof(payload));
-            position = (char *)payload;
-            total_read = fread(payload, 1, read_size, fp);
-        }
+            memset(&buff, 0, sizeof(buff));
 
-        if (total_read >= block_size)
-        {
-            block_read = block_size;
-            total_read = total_read - block_size;
-        }
-        else
-        {
-            block_read = total_read;
-            total_read = 0;
-        }
-
-        // printf("Session %d : Read data block: %d\n", index, block_read);
-
-        memset(block_space, 0, sizeof(block_space));
-        memcpy(block_space, position, block_read);
-
-        data_pkt *data_packet;
-
-        tftp_send_data(socket_fd_s, block_number, (uint8_t *)block_space, block_read, &client_address, clen);
-
-        // printf("Session %d : Send packet type: %d , data block : %d\n", index, DATA, block_number);
-
-        position += block_read;
-        total_byte += block_read;
-
-        if (session_count < 2)
-            print_progress(total_byte, tsize, index);
-
-        memset(&buff, 0, sizeof(buff));
-
-        if (recvfrom(socket_fd_s, (uint8_t *)buff, sizeof(buff), 0, (struct sockaddr *)&client_addrs, &slen) == SOCKET_ERROR)
-        {
-            printf("\nrecvfrom failed with error: %d\n", WSAGetLastError());
-            READ_SESSION_CLOSE(fp, socket_fd_s, index);
-        }
-
-        type = ntohs(*(uint16_t *)buff);
-
-        switch (type)
-        {
-        case ACK:
-            ack_packet = (ack_pkt *)buff;
-
-            block = ntohs(ack_packet->block_number);
-
-            if (block == block_number)
+            if (!total_read)
             {
-                // printf("Session %d : ACK packet data block : %d\n\n", index, block);
-                block_number++;
+                memset(&payload, 0, sizeof(payload));
+                position = (char *)payload;
+                total_read = fread(payload, 1, read_size, fp);
             }
-            else if (block == block_number - 1)
+
+            if (total_read >= block_size)
             {
-                tftp_send_data(socket_fd_s, block_number, (uint8_t *)block_space, block_read, &client_address, clen);
-
-                printf("\nSession %d : Retransmiting packet type: %d , data block : %d\n", index, DATA, block_number);
-
-                continue;
+                block_read = block_size;
+                total_read = total_read - block_size;
             }
             else
             {
-                send_error(socket_fd_s, 0, (uint8_t *)"Wrong block acknoledgement", &client_address, clen);
-
-                READ_SESSION_CLOSE(fp, socket_fd_s, index);
+                block_read = total_read;
+                total_read = 0;
             }
 
-            if (block_read < block_size)
-            {
-                printf("\nSession %d : %s transfer complete %d blocks: %d bytes\n", index, sessions[index].filename, block_number, total_byte);
+            // printf("Session %d : Read data block: %d\n", index, block_read);
 
-                READ_SESSION_CLOSE(fp, socket_fd_s, index);
-            }
-            break;
+            memset(block_space, 0, sizeof(block_space));
+            memcpy(block_space, position, block_read);
 
-        case ERROR_TFTP:
-            erro = (error_pkt *)buff;
-            error_code = ntohs(erro->error_code);
-            memcpy(error_message, erro->error_string, strlen((char *)erro->error_string) + 1);
+            data_pkt *data_packet;
 
-            printf("\nSession %d : Error Code : %d and Error Message: %s\n", index, error_code, error_message);
+            tftp_send_data(socket_fd_s, block_number, (uint8_t *)block_space, block_read, &client_address, clen);
+            // sessions[index].last_send_time = time(NULL);
 
+            // printf("Session %d : Send packet type: %d , data block : %d\n", index, DATA, block_number);
+
+            position += block_read;
+            total_byte += block_read;
+
+            if (session_count < 2)
+                print_progress(total_byte, tsize, index);
+        }
+
+        // time_t current_time = time(NULL);
+        // double elapsed_seconds = difftime(current_time, sessions[index].last_send_time);
+
+        fd_set read_fds;
+        FD_ZERO(&read_fds);
+        FD_SET(socket_fd_s, &read_fds);
+
+        struct timeval timeout;
+        timeout.tv_sec = sessions[index].timeout;
+        timeout.tv_usec = 0;
+
+        int select_result = select(0, &read_fds, NULL, NULL, &timeout);
+
+        if (select_result == SOCKET_ERROR)
+        {
+            printf("Select failed with error: %d\n", WSAGetLastError());
             READ_SESSION_CLOSE(fp, socket_fd_s, index);
-            break;
+        }
+        else if (select_result == 0)
+        {
+            retry_flag = 1;
+            // Timeout occurred, retransmit the packet
+            if (retries < max_retries)
+            {
+                tftp_send_data(socket_fd_s, block_number, (uint8_t *)block_space, block_read, &client_address, clen);
+                // sessions[index].last_send_time = current_time; // Update the send time
+                retries++;
+                printf("\nSession %d : Retransmiting data block : %d\n", index, DATA, block_number);
+            }
+            else
+            {
+                // Maximum retries reached, terminate the session
+                send_error(socket_fd_s, 0, (uint8_t *)"Maximum retries reached", &client_address, clen);
+                printf("\nSession %d : TFTP timeout!\n", index);
+                READ_SESSION_CLOSE(fp, socket_fd_s, index);
+            }
+        }
+        else
+        {
+            memset(&buff, 0, sizeof(buff));
 
-        default:
-            break;
+            if (recvfrom(socket_fd_s, (uint8_t *)buff, sizeof(buff), 0, (struct sockaddr *)&client_addrs, &slen) == SOCKET_ERROR)
+            {
+                int error_code = WSAGetLastError();
+                if (error_code == 10054)
+                {
+                    // Remote host forcibly closed the connection
+                    printf("Session %d: Remote host forcibly closed the connection\n", index);
+                    READ_SESSION_CLOSE(fp, socket_fd_s, index);
+                }
+                else
+                {
+                    printf("recvfrom failed with error: %d\n", error_code);
+                    READ_SESSION_CLOSE(fp, socket_fd_s, index);
+                }
+            }
+
+            type = ntohs(*(uint16_t *)buff);
+
+            switch (type)
+            {
+            case ACK:
+                ack_packet = (ack_pkt *)buff;
+
+                block = ntohs(ack_packet->block_number);
+
+                if (block == block_number)
+                {
+                    retry_flag = 0;
+                    // printf("Session %d : ACK packet data block : %d\n\n", index, block);
+                    block_number++;
+                }
+                else if (block == block_number - 1)
+                {
+                    retry_flag = 1;
+                    tftp_send_data(socket_fd_s, block_number, (uint8_t *)block_space, block_read, &client_address, clen);
+
+                    printf("\nblock == block - 1 Session %d : Retransmiting data block : %d\n", index, DATA, block_number);
+
+                    continue;
+                }
+                else
+                {
+                    send_error(socket_fd_s, 0, (uint8_t *)"Wrong block acknoledgement", &client_address, clen);
+
+                    READ_SESSION_CLOSE(fp, socket_fd_s, index);
+                }
+
+                if (block_read < block_size)
+                {
+                    printf("\nSession %d : %s transfer complete %d blocks: %d bytes\n", index, sessions[index].filename, block_number-1, total_byte);
+
+                    READ_SESSION_CLOSE(fp, socket_fd_s, index);
+                }
+                break;
+
+            case ERROR_TFTP:
+                erro = (error_pkt *)buff;
+                error_code = ntohs(erro->error_code);
+                memcpy(error_message, erro->error_string, strlen((char *)erro->error_string) + 1);
+
+                printf("\nSession %d : Error Code : %d and Error Message: %s\n", index, error_code, error_message);
+
+                READ_SESSION_CLOSE(fp, socket_fd_s, index);
+                break;
+
+            default:
+                break;
+            }
         }
     }
 
-    return 0;
+    READ_SESSION_CLOSE(fp, socket_fd_s, index);
 }
 
 DWORD WINAPI WRQ_func(LPVOID arg)
