@@ -37,11 +37,11 @@
 #define MAX_SESSION 10
 #define BLOCKSIZE 512
 
-#define BUFSIZE 10000
+#define BUFSIZE 65535 
 
 #define LITTLE_BUF 600
 
-#define MAX_READ_SIZE 9500
+#define MAX_READ_SIZE 60000
 
 #define PORT 69
 
@@ -556,7 +556,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
     if (block_space == NULL)
     {
         // Handle memory allocation failure
-        printf("Session %d : Failed to allocate memory for block_space\n", index);
+        printf("\nSession %d : Failed to allocate memory for block_space\n", index);
         READ_SESSION_CLOSE(fp, socket_fd_s, index);
     }
 
@@ -624,7 +624,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 
         if (select_result == SOCKET_ERROR)
         {
-            printf("Session %d : Select failed with error: %d\n", WSAGetLastError(), index);
+            printf("\nSession %d : Select failed with error: %d\n", WSAGetLastError(), index);
             READ_SESSION_CLOSE(fp, socket_fd_s, index);
         }
         else if (select_result == 0)
@@ -659,12 +659,12 @@ DWORD WINAPI RRQ_func(LPVOID arg)
                 if (error_code == 10054)
                 {
                     // Remote host forcibly closed the connection
-                    printf("Session %d: Remote host forcibly closed the connection\n", index);
+                    printf("\nSession %d: Remote host forcibly closed the connection\n", index);
                     READ_SESSION_CLOSE(fp, socket_fd_s, index);
                 }
                 else
                 {
-                    printf("Session %d: recvfrom failed with error: %d\n", error_code);
+                    printf("\nSession %d: recvfrom failed with error: %d\n", error_code);
                     READ_SESSION_CLOSE(fp, socket_fd_s, index);
                 }
             }
@@ -854,7 +854,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
         if (select_result == SOCKET_ERROR)
         {
             printf("Select failed with error: %d\n", WSAGetLastError());
-            READ_SESSION_CLOSE(fp, socket_fd_s, index);
+            WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
         }
         else if (select_result == 0)
         {
@@ -874,7 +874,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
                 // Maximum retries reached, terminate the session
                 send_error(socket_fd_s, 0, (uint8_t *)"Maximum retries reached", &client_address, clen);
                 printf("\nSession %d : TFTP timeout!\n", index);
-                READ_SESSION_CLOSE(fp, socket_fd_s, index);
+                WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
             }
         }
         else
