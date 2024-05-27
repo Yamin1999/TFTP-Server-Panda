@@ -19,6 +19,14 @@
 
 #pragma comment(lib, "Ws2_32.lib")
 
+#define LIGHTGRAY 7
+#define DARKGRAY 8
+#define LIGHTBLUE 9
+#define LIGHTGREEN 10
+#define LIGHTCYAN 11
+#define LIGHTRED 12
+#define LIGHTMAGENTA 13
+
 #define RRQ 1
 #define WRQ 2
 #define DATA 3
@@ -37,7 +45,7 @@
 #define MAX_SESSION 10
 #define BLOCKSIZE 512
 
-#define BUFSIZE 65535 
+#define BUFSIZE 65535
 
 #define LITTLE_BUF 600
 
@@ -137,9 +145,18 @@ void tftp_send_data(SOCKET socket_f, uint16_t block_number, uint8_t *data, int d
 void tftp_send_ack(SOCKET socket_f, uint16_t block_number, struct sockaddr_in *client_sock, int slen);
 DWORD WINAPI RRQ_func(LPVOID arg);
 DWORD WINAPI WRQ_func(LPVOID arg);
+
+void printPANDA()
+{
+    printf("            ____    _    _   _   ____    _    \n");
+    printf("           |  _ \\  / \\  | \\ | | |  _ \\  / \\   \n");
+    printf("           | |_) |/ _ \\ |  \\| | | | | |/ _ \\  \n");
+    printf("           |  __// ___ \\| |\\  | | |_| / ___ \\ \n");
+    printf("           |_|  /_/   \\_\\_| \\_| |____/_/   \\_\\\n");
+}
 void printHeader()
 {
-    printf("=============== TFTP Server v1.0.1 =====================\n");
+    printf("\n=================== Panda v1.0.1 ======================\n");
     printf("*                                                      *\n");
     printf("*   Md. Yamin Haque                                    *\n");
     printf("*   R&D Engineer                                       *\n");
@@ -148,6 +165,12 @@ void printHeader()
     printf("*   yamin.haque@bdcom.com.cn                           *\n");
     printf("*                                                      *\n");
     printf("*======================================================*\n");
+}
+
+void setColor(int colorCode)
+{
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    SetConsoleTextAttribute(hConsole, colorCode);
 }
 
 void print_progress(size_t count, size_t max, int index)
@@ -172,6 +195,8 @@ void print_progress_write(size_t count, size_t max, int index)
 
 int main()
 {
+    setColor(LIGHTCYAN);
+    printPANDA();
     printHeader();
     WSADATA wsaData;
     int iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
@@ -210,7 +235,7 @@ int main()
         return 0;
     }
 
-    printf("TFTP server: listening on %d\n", ntohs(server_sock.sin_port));
+    printf("TFTP server : Panda listening on port %d\n", ntohs(server_sock.sin_port));
 
     while (1)
     {
@@ -246,7 +271,7 @@ int main()
             }
             else
             {
-                printf("tftp server: Can't start the read session\n");
+                printf("tftp server : Can't start the read session\n");
                 continue;
             }
             memset(&sessions[session_id], 0, sizeof(sessions[session_id]));
@@ -256,7 +281,7 @@ int main()
             thread_handle = CreateThread(NULL, 0, RRQ_func, (LPVOID)&session_id, 0, &thread_id);
             if (thread_handle == NULL)
             {
-                printf("tftp server: Thread creation failed with error: %d\n", GetLastError());
+                printf("tftp server : Thread creation failed with error: %d\n", GetLastError());
             }
             else
             {
@@ -278,7 +303,7 @@ int main()
             }
             else
             {
-                printf("tftp server: Can't start the write session\n");
+                printf("tftp server : Can't start the write session\n");
                 continue;
             }
             memset(&sessions[session_id], 0, sizeof(sessions[session_id]));
@@ -288,7 +313,7 @@ int main()
             thread_handle = CreateThread(NULL, 0, WRQ_func, (LPVOID)&session_id, 0, &thread_id);
             if (thread_handle == NULL)
             {
-                printf("tftp server: Thread creation failed with error: %d\n", GetLastError());
+                printf("tftp server : Thread creation failed with error: %d\n", GetLastError());
             }
             else
             {
@@ -321,7 +346,7 @@ void filename_mode_option_fetch(uint8_t *buff, int session_id)
     memcpy(sessions[session_id].filename, file_name, strlen((char *)file_name) + 1);
 
     memcpy(sessions[session_id].transfer_mode, file_mode, strlen((char *)file_mode) + 1);
-    
+
     if (!write_flag)
     {
         FILE *fp;
@@ -505,7 +530,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
     }
     else
     {
-        printf("\nSession %d : File %s does not exist in the current directory.\n", index, sessions[index].filename);
+        printf("Session %d : File %s does not exist in the current directory.\n", index, sessions[index].filename);
 
         send_error(socket_fd_s, (uint16_t)ERR_FILE_NOT_FOUND, (uint8_t *)"File not exits", &client_address, clen);
 
@@ -518,7 +543,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 
     if (fp == NULL)
     {
-        printf("\nSession %d : file opened failed!\n", index);
+        printf("Session %d : file opened failed!\n", index);
         READ_SESSION_CLOSE(fp, socket_fd_s, index);
     }
 
@@ -556,7 +581,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
     if (block_space == NULL)
     {
         // Handle memory allocation failure
-        printf("\nSession %d : Failed to allocate memory for block_space\n", index);
+        printf("Session %d : Failed to allocate memory for block_space\n", index);
         READ_SESSION_CLOSE(fp, socket_fd_s, index);
     }
 
@@ -605,8 +630,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
             position += block_read;
             total_byte += block_read;
 
-            if (session_count < 2)
-                print_progress(total_byte, tsize, index);
+            print_progress(total_byte, tsize, index);
         }
 
         // time_t current_time = time(NULL);
@@ -659,12 +683,12 @@ DWORD WINAPI RRQ_func(LPVOID arg)
                 if (error_code == 10054)
                 {
                     // Remote host forcibly closed the connection
-                    printf("\nSession %d: Remote host forcibly closed the connection\n", index);
+                    printf("\nSession %d : Remote host forcibly closed the connection\n", index);
                     READ_SESSION_CLOSE(fp, socket_fd_s, index);
                 }
                 else
                 {
-                    printf("\nSession %d: recvfrom failed with error: %d\n", error_code);
+                    printf("\nSession %d : recvfrom failed with error: %d\n", error_code);
                     READ_SESSION_CLOSE(fp, socket_fd_s, index);
                 }
             }
@@ -736,7 +760,6 @@ DWORD WINAPI WRQ_func(LPVOID arg)
 {
     int index = *(int *)arg;
     sessions[index].session_id = index;
-
     printf("\nSession %d : Request for write file : %s\n", index, sessions[index].filename);
 
     SOCKET socket_fd_s;
@@ -752,7 +775,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
     uint32_t block_size = sessions[index].block_size;
 
     uint16_t block, error_code, opcode, type;
-    uint8_t error_message[BUFSIZE];
+    uint8_t error_message[LITTLE_BUF];
     ack_pkt *ack_packet;
     FILE *fp;
     data_pkt *data_packet;
@@ -766,7 +789,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
 
     if (socket_fd_s == INVALID_SOCKET)
     {
-        printf("\nSocket creation Failed!\n");
+        printf("Socket creation Failed!\n");
         session_flag[index] = 0;
         session_count--;
         return 0;
@@ -778,7 +801,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
 
     if (bind(socket_fd_s, (struct sockaddr *)&server_sock_addr, sizeof(server_sock_addr)) == SOCKET_ERROR)
     {
-        printf("\nSocket bind Failed!\n");
+        printf("Socket bind Failed!\n");
         closesocket(socket_fd_s);
         session_flag[index] = 0;
         session_count--;
@@ -790,7 +813,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
 
     if (_access(sessions[index].filename, 0) != -1)
     {
-        printf("\nSession %d : File %s is already exists in the current directory.\n", index, sessions[index].filename);
+        printf("Session %d : File %s is already exists in the current directory.\n", index, sessions[index].filename);
 
         send_error(socket_fd_s, (uint16_t)ERR_FILE_ALREADY_EXITS, (uint8_t *)"File already exits", &client_address, clen);
 
@@ -798,32 +821,34 @@ DWORD WINAPI WRQ_func(LPVOID arg)
     }
 
     uint8_t buff[BUFSIZE];
-    uint8_t payload[BUFSIZE];
+    uint8_t write_buffer[BUFSIZE];
+    uint8_t lillte_buf[LITTLE_BUF];
+    uint32_t write_buffer_pos = 0;
 
     if (sessions[index].option_flag)
     {
-        memset(&buff, 0, sizeof(buff));
+        memset(&lillte_buf, 0, sizeof(lillte_buf));
 
-        optn_pkt *optn_packet = (optn_pkt *)buff;
+        optn_pkt *optn_packet = (optn_pkt *)lillte_buf;
 
         optn_packet->opcode = htons(6);
 
         memcpy(optn_packet->option, sessions[index].option, sessions[index].option_len);
 
-        sendto(socket_fd_s, (uint8_t *)buff, 2 + sessions[index].option_len, 0, (struct sockaddr *)&client_address, clen);
+        sendto(socket_fd_s, (uint8_t *)lillte_buf, 2 + sessions[index].option_len, 0, (struct sockaddr *)&client_address, clen);
         block_number++;
     }
     else
     {
-        memset(&buff, 0, sizeof(buff));
+        memset(&lillte_buf, 0, sizeof(lillte_buf));
 
-        ack_packet = (ack_pkt *)buff;
+        ack_packet = (ack_pkt *)lillte_buf;
 
         ack_packet->opcode = htons(ACK);
 
         ack_packet->block_number = htons(block_number);
 
-        sendto(socket_fd_s, (uint8_t *)buff, sizeof(*ack_packet), 0, (struct sockaddr *)&client_address, clen);
+        sendto(socket_fd_s, (uint8_t *)lillte_buf, sizeof(*ack_packet), 0, (struct sockaddr *)&client_address, clen);
 
         // printf("Sent ACK for write file\n");
         block_number++;
@@ -835,7 +860,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
 
     if (fp == NULL)
     {
-        printf("\nfile opened failed!\n");
+        printf("file opened failed!\n");
         WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
     }
 
@@ -862,9 +887,9 @@ DWORD WINAPI WRQ_func(LPVOID arg)
             if (retries < max_retries)
             {
                 if (sessions[index].option_flag)
-                    sendto(socket_fd_s, (uint8_t *)buff, 2 + sessions[index].option_len, 0, (struct sockaddr *)&client_address, clen);
+                    sendto(socket_fd_s, (uint8_t *)lillte_buf, 2 + sessions[index].option_len, 0, (struct sockaddr *)&client_address, clen);
                 else
-                    sendto(socket_fd_s, (uint8_t *)buff, sizeof(*ack_packet), 0, (struct sockaddr *)&client_address, clen);
+                    sendto(socket_fd_s, (uint8_t *)lillte_buf, sizeof(*ack_packet), 0, (struct sockaddr *)&client_address, clen);
                 // sessions[index].last_send_time = current_time; // Update the send time
                 retries++;
                 // printf("\nSession %d : Retransmiting data block : %d\n", index, ntohs(ack_packet->block_number));
@@ -879,11 +904,25 @@ DWORD WINAPI WRQ_func(LPVOID arg)
         }
         else
         {
-
-            memset(&payload, 0, sizeof(payload));
             memset(&buff, 0, sizeof(buff));
 
             c = recvfrom(socket_fd_s, (uint8_t *)buff, sizeof(buff), 0, (struct sockaddr *)&client_addrs, &slen);
+
+            if (c == SOCKET_ERROR)
+            {
+                int error_code = WSAGetLastError();
+                if (error_code == 10054)
+                {
+                    // Remote host forcibly closed the connection
+                    printf("\nSession %d : Remote host forcibly closed the connection\n", index);
+                    WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
+                }
+                else
+                {
+                    printf("\nSession %d : recvfrom failed with error: %d\n", error_code);
+                    WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
+                }
+            }
 
             type = ntohs(*(uint16_t *)buff);
 
@@ -897,30 +936,58 @@ DWORD WINAPI WRQ_func(LPVOID arg)
 
                 opcode = ntohs(data_packet->opcode);
                 block = ntohs(data_packet->block_number);
-                memcpy(payload, data_packet->data, block_write);
 
-                print_progress_write(block, total_bytes, index);
-
-                // printf("Receive packet type: %d, data block: %d\n", opcode, block);
-
-                fwrite(payload, 1, block_write, fp);
+                // Copy the received data to the write buffer
 
                 // printf("Write block: %d\n", block_write);
 
-                memset(&buff, 0, sizeof(buff));
+                memset(&lillte_buf, 0, sizeof(lillte_buf));
 
-                ack_packet = (ack_pkt *)buff;
+                ack_packet = (ack_pkt *)lillte_buf;
 
                 ack_packet->opcode = htons(ACK);
 
                 if (block == block_number)
                 {
+                    if (write_buffer_pos + block_write <= MAX_READ_SIZE)
+                    {
+                        memcpy(write_buffer + write_buffer_pos, data_packet->data, block_write);
+                        write_buffer_pos += block_write;
+                    }
+                    else
+                    {
+                        // Buffer is full, write it to the file and reset the buffer position
+                        fwrite(write_buffer, 1, write_buffer_pos, fp);
+                        write_buffer_pos = 0;
+                        memcpy(write_buffer, data_packet->data, block_write);
+                        write_buffer_pos = block_write;
+                    }
+
+                    print_progress_write(block, total_bytes, index);
                     ack_packet->block_number = htons(block_number);
+
+                    sendto(socket_fd_s, (uint8_t *)lillte_buf, sizeof(*ack_packet), 0, (struct sockaddr *)&client_address, clen);
+
+                    // printf("Sent ACK for data block: %d\n\n", block_number);
+
+                    if (block_write < block_size)
+                    {
+                        printf("\nSession %d : %s receiving complete %d blocks : %d bytes\n", index, sessions[index].filename, block_number, total_bytes);
+
+                        // Write any remaining data in the write buffer to the file
+                        if (write_buffer_pos > 0)
+                        {
+                            fwrite(write_buffer, 1, write_buffer_pos, fp);
+                        }
+
+                        WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
+                    }
+                    block_number++;
                 }
                 else if (block == block_number - 1)
                 {
                     ack_packet->block_number = htons(block_number - 1);
-                    sendto(socket_fd_s, (uint8_t *)buff, sizeof(*ack_packet), 0, (struct sockaddr *)&client_address, clen);
+                    sendto(socket_fd_s, (uint8_t *)lillte_buf, sizeof(*ack_packet), 0, (struct sockaddr *)&client_address, clen);
                     continue;
                 }
                 else
@@ -928,17 +995,6 @@ DWORD WINAPI WRQ_func(LPVOID arg)
                     send_error(socket_fd_s, 0, (uint8_t *)"Wrong Data block send", &client_address, clen);
                     WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
                 }
-
-                sendto(socket_fd_s, (uint8_t *)buff, sizeof(*ack_packet), 0, (struct sockaddr *)&client_address, clen);
-
-                // printf("Sent ACK for data block: %d\n\n", block_number);
-
-                if (block_write < block_size)
-                {
-                    printf("\nSession %d : %s receiving complete %d blocks : %d bytes\n", index, sessions[index].filename, block_number, total_bytes);
-                    WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
-                }
-                block_number++;
                 break;
 
             case ERROR_TFTP:
@@ -946,7 +1002,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
                 error_code = ntohs(erro->error_code);
                 memcpy(error_message, erro->error_string, strlen((char *)erro->error_string) + 1);
 
-                printf("Session %d : Error Code : %d and Error Message: %s\n", index, error_code, error_message);
+                printf("\nSession %d : Error Code : %d and Error Message: %s\n", index, error_code, error_message);
 
                 WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
                 break;
