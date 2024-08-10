@@ -3,7 +3,7 @@
  *
  *       Filename:  tftp_read.c
  *
- *    Description:  This file contains the function implementations for handling read 
+ *    Description:  This file contains the function implementations for handling read
  *                  requests (RRQ) in the TFTP server, including managing client sessions,
  *                  sending data from a file, and handling acknowledgments and errors.
  *
@@ -14,19 +14,19 @@
  *
  *         Author:  Yamin Haque, R&D Engineer, yamin.haque@bdcom.com.cn
  *        Company:  Shanghai BDCOM Information Technology Co., Ltd.
- *        
+ *
  *        This file is part of the TFTP server distribution (https://github.com/Yamin1999).
  *        Copyright (c) 2024 Yamin Haque.
  *        This program is free software: you can redistribute it and/or modify
- *        it under the terms of the GNU General Public License as published by  
+ *        it under the terms of the GNU General Public License as published by
  *        the Free Software Foundation, version 3.
  *
- *        This program is distributed in the hope that it will be useful, but 
- *        WITHOUT ANY WARRANTY; without even the implied warranty of 
- *        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU 
+ *        This program is distributed in the hope that it will be useful, but
+ *        WITHOUT ANY WARRANTY; without even the implied warranty of
+ *        MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU
  *        General Public License for more details.
  *
- *        You should have received a copy of the GNU General Public License 
+ *        You should have received a copy of the GNU General Public License
  *        along with this program. If not, see <http://www.gnu.org/licenses/>.
  *
  * =====================================================================================
@@ -92,10 +92,10 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 
     printf("\nSession %d : Request for read file : %s from %s\n", index, sessions[index].filename, inet_ntoa(client_address.sin_addr));
 
-    if (_access((const char *)sessions[index].filename, 0) == 0)
+    if (_access((const char *)sessions[index].filename, 0) != 0)
     {
         printf("Session %d : File %s does not exist in the current directory.\n", index, sessions[index].filename);
-        send_error(socket_fd_s, (uint16_t)ERR_FILE_NOT_FOUND, (uint8_t *)"File not exits", &client_address, clen);
+        send_error(socket_fd_s, (uint16_t)ERR_FILE_NOT_FOUND, (uint8_t *)"File not exists", &client_address, clen);
         READ_SESSION_CLOSE(fp, socket_fd_s, index);
     }
 
