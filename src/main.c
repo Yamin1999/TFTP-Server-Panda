@@ -5,12 +5,13 @@
 uint32_t session_flag[MAX_SESSION] = {0};
 uint32_t session_count = 0;
 uint32_t write_flag = 0;
+uint32_t session_index_count = 0;
 
 
 int main() {
     setColor(LIGHTCYAN);
     printPANDA();
-    printHeader();
+    
     
     // Initialize Winsock
     WSADATA wsaData;

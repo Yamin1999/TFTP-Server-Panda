@@ -38,11 +38,11 @@
 
 void printPANDA()
 {
-    printf("            ____    _    _   _   ____    _    \n");
-    printf("           |  _ \\  / \\  | \\ | | |  _ \\  / \\   \n");
-    printf("           | |_) |/ _ \\ |  \\| | | | | |/ _ \\  \n");
-    printf("           |  __// ___ \\| |\\  | | |_| / ___ \\ \n");
-    printf("           |_|  /_/   \\_\\_| \\_| |____/_/   \\_\\\n");
+    printf("                                        ____    _    _   _   ____    _    \n");
+    printf("                                       |  _ \\  / \\  | \\ | | |  _ \\  / \\   \n");
+    printf("                                       | |_) |/ _ \\ |  \\| | | | | |/ _ \\  \n");
+    printf("                                       |  __// ___ \\| |\\  | | |_| / ___ \\ \n");
+    printf("                                       |_|  /_/   \\_\\_| \\_| |____/_/   \\_\\\n");
 }
 
 void printHeader()
@@ -83,6 +83,51 @@ void print_progress(size_t count, size_t max, int index)
 void print_progress_write(size_t count, size_t max, int index)
 {
     printf("\rSession %d : Received %lu blocks: %lu bytes", index, (unsigned long)count, (unsigned long)max);
+    fflush(stdout);
+}
+
+void init_session_table() {
+    printf("\n=================================================================================================================");
+    printf("\n| No |    Filename                                     |   Client IP       | Op     | Bytes      | Time         |");
+    printf("\n=================================================================================================================");
+    printf("\n");
+}
+
+void format_time(char *buffer, size_t size) {
+    time_t current_time;
+    struct tm *time_info;
+    
+    time(&current_time);
+    time_info = localtime(&current_time);
+    strftime(buffer, size, "%I:%M:%S %p", time_info);
+}
+
+void log_session_progress(uint32_t index_count, session_t *session, uint32_t bytes) {
+    char time_str[20];
+    format_time(time_str, sizeof(time_str));
+
+    printf("\r| %-3d|    %-44s |   %-15s | %-6s | %-10d | %-12s |",
+           index_count,
+           session->filename,
+           inet_ntoa(session->client_adderess.sin_addr),
+           session->operation == READ ? "READ" : "WRITE",
+           bytes,
+           time_str);
+    fflush(stdout);
+}
+
+void log_session_complete(uint32_t index_count, session_t *session, uint32_t total_bytes) {
+    char time_str[20];
+    format_time(time_str, sizeof(time_str));
+
+    printf("\r| %-3d|    %-44s |   %-15s | %-6s | %-10d | %-12s |",
+           index_count,
+           session->filename,
+           inet_ntoa(session->client_adderess.sin_addr),
+           session->operation == READ ? "READ" : "WRITE",
+           total_bytes,
+           time_str);
+    printf("\n-----------------------------------------------------------------------------------------------------------------\n");
     fflush(stdout);
 }
 

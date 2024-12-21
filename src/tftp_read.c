@@ -40,6 +40,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 {
     int index = *(int *)arg;
     sessions[index].session_id = index;
+    sessions[index].operation = READ;
 
     SOCKET socket_fd_s;
     struct sockaddr_in server_sock_addr, client_addrs, client_address;
@@ -90,19 +91,25 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 
     FILE *fp = NULL;
 
-    printf("\nSession %d : Request for read file : %s from %s\n", index, sessions[index].filename, inet_ntoa(client_address.sin_addr));
+    sessions[index].index_count = ++session_index_count;
+
+    // log_session_start(sessions[index].index_count, &sessions[index]);
+
+    // printf("\nSession %d : Request for read file : %s from %s\n", index, sessions[index].filename, inet_ntoa(client_address.sin_addr));
 
     if (_access((const char *)sessions[index].filename, 0) != 0)
     {
-        printf("Session %d : File %s does not exist in the current directory.\n", index, sessions[index].filename);
+        printf("| %-3d|    File %s does not exist in the current directory.\n", sessions[index].index_count, sessions[index].filename);
         send_error(socket_fd_s, (uint16_t)ERR_FILE_NOT_FOUND, (uint8_t *)"File not exists", &client_address, clen);
+        println();
         READ_SESSION_CLOSE(fp, socket_fd_s, index);
     }
 
     if (strcmp((char *)sessions[index].transfer_mode, (char *)"octet") != 0)
     {
-        printf("Session %d : Olny support octet mode!\n", index);
+        printf("| %-3d|    Olny support octet mode!\n", sessions[index].index_count);
         send_error(socket_fd_s, (uint16_t)ERR_NOT_DEFINE, (uint8_t *)"Olny support octet mode!", &client_address, clen);
+        println();
         READ_SESSION_CLOSE(fp, socket_fd_s, index);
     }
 
@@ -110,7 +117,8 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 
     if (fp == NULL)
     {
-        printf("Session %d : file opened failed!\n", index);
+        printf("| %-3d|    file opened failed!\n", sessions[index].index_count);
+        println();
         READ_SESSION_CLOSE(fp, socket_fd_s, index);
     }
 
@@ -172,7 +180,8 @@ DWORD WINAPI RRQ_func(LPVOID arg)
             position += block_read;
             total_byte += block_read;
 
-            print_progress(total_byte, tsize, index);
+            //  print_progress(total_byte, tsize, index);
+            log_session_progress(sessions[index].index_count, &sessions[index], total_byte);
         }
 
         fd_set read_fds;
@@ -204,7 +213,8 @@ DWORD WINAPI RRQ_func(LPVOID arg)
             else
             {
                 send_error(socket_fd_s, 0, (uint8_t *)"Maximum retries reached", &client_address, clen);
-                printf("\nSession %d : TFTP timeout!\n", index);
+                printf("\n| %-3d|    TFTP timeout!\n", sessions[index].index_count);
+                println();
                 READ_SESSION_CLOSE(fp, socket_fd_s, index);
             }
         }
@@ -217,7 +227,8 @@ DWORD WINAPI RRQ_func(LPVOID arg)
                 int error_code = WSAGetLastError();
                 if (error_code == 10054)
                 {
-                    printf("\nSession %d : Remote host forcibly closed the connection\n", index);
+                    printf("\n| %-3d|    Remote host forcibly closed the connection\n", sessions[index].index_count);
+                    println();
                     READ_SESSION_CLOSE(fp, socket_fd_s, index);
                 }
                 else
@@ -259,9 +270,11 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 
                 if (block_read < block_size)
                 {
-                    time_t t;
-                    time(&t);
-                    printf("\nSession %d : Transfer complete %d bytes from Panda at: %s\n", index, total_byte, ctime(&t));
+                    // time_t t;
+                    // time(&t);
+                    // printf("\nSession %d : Transfer complete %d bytes from Panda at: %s\n", index, total_byte, ctime(&t));
+
+                    log_session_complete(sessions[index].index_count, &sessions[index], total_byte);
                     READ_SESSION_CLOSE(fp, socket_fd_s, index);
                 }
                 break;
@@ -270,7 +283,8 @@ DWORD WINAPI RRQ_func(LPVOID arg)
                 erro = (error_pkt *)buff;
                 error_code = ntohs(erro->error_code);
                 memcpy(error_message, erro->error_string, strlen((char *)erro->error_string) + 1);
-                printf("\nSession %d : Error Code : %d and Error Message: %s\n", index, error_code, error_message);
+                printf("| %-3d|    Error Code : %d and Error Message: %s\n", sessions[index].index_count, error_code, error_message);
+                println();
                 READ_SESSION_CLOSE(fp, socket_fd_s, index);
                 break;
 

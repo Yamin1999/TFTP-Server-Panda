@@ -17,6 +17,7 @@
 #include <io.h>
 #include <time.h>
 
+
 #ifdef _WIN32
 #ifdef _MSC_VER
 #pragma comment(lib, "Ws2_32.lib")
@@ -37,6 +38,10 @@
 #define ACK 4
 #define ERROR_TFTP 5
 #define BAR_WIDTH 50
+
+
+#define READ 1 
+#define WRITE 2
 
 #define ERR_NOT_DEFINE 0
 #define ERR_FILE_NOT_FOUND 1
@@ -85,6 +90,9 @@
         return 0;                                             \
     } while (0)
 
+#define println() printf("-----------------------------------------------------------------------------------------------------------------\n")
+
+
 #pragma pack(push, 1) // Disable structure member alignment
 
 typedef struct request
@@ -132,6 +140,8 @@ typedef struct sesion_headr
     uint32_t timeout;
     uint32_t current_block;
     uint32_t session_id;
+    uint32_t index_count;
+    uint32_t operation;
     // time_t last_send_time;
 } session_t;
 
@@ -141,6 +151,7 @@ session_t sessions[MAX_SESSION];
 extern uint32_t session_flag[MAX_SESSION];
 
 extern uint32_t session_count;
+extern uint32_t session_index_count;
 extern uint32_t write_flag;
 
 void setColor(int colorCode);

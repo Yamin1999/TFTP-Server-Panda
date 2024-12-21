@@ -37,20 +37,26 @@
 #include <tftp_write.h>
 #include <tftp_utils.h>
 #include <tftp_server.h>
+#include <conio.h> // For _getch()
+
+void show_error_and_wait(const char* error_message, int error_code) {
+    printf("\nError: %s\nError code: %d\n", error_message, error_code);
+    printf("\nPress any key to continue...");
+    _getch();
+}
 
 void start_tftp_server() {
-     SOCKET socket_fd;
+    SOCKET socket_fd;
     struct sockaddr_in server_sock, client_sock;
     int len = sizeof(client_sock);
     uint8_t recv_req[LITTLE_BUF];
-
     uint32_t session_id, i;
 
     socket_fd = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (socket_fd == INVALID_SOCKET)
     {
-        printf("Socket creation failed with error: %d\n", WSAGetLastError());
+        show_error_and_wait("Socket creation failed", WSAGetLastError());
         WSACleanup();
         return;
     }
@@ -61,13 +67,15 @@ void start_tftp_server() {
 
     if (bind(socket_fd, (struct sockaddr *)&server_sock, sizeof(server_sock)) == SOCKET_ERROR)
     {
-        printf("Socket bind failed with error: %d\n", WSAGetLastError());
+        show_error_and_wait("Socket bind failed", WSAGetLastError());
         closesocket(socket_fd);
         WSACleanup();
         return;
     }
 
-    printf("TFTP server : Panda listening on port %d\n", ntohs(server_sock.sin_port));
+    //printf("TFTP server : Panda listening on port %d\n", ntohs(server_sock.sin_port));
+
+    init_session_table();
 
     while (1)
     {
@@ -76,7 +84,7 @@ void start_tftp_server() {
 
         if (recvfrom(socket_fd, (char *)recv_req, sizeof(recv_req), 0, (struct sockaddr *)&client_sock, &len) == SOCKET_ERROR)
         {
-            printf("recvfrom failed with error: %d\n", WSAGetLastError());
+            show_error_and_wait("recvfrom failed", WSAGetLastError());
             continue;
         }
 
@@ -101,7 +109,7 @@ void start_tftp_server() {
             }
             else
             {
-                printf("tftp server : Can't start the read session\n");
+                show_error_and_wait("Can't start the read session", 0);
                 continue;
             }
             memset(&sessions[session_id], 0, sizeof(sessions[session_id]));
@@ -111,7 +119,7 @@ void start_tftp_server() {
             thread_handle = CreateThread(NULL, 0, RRQ_func, (LPVOID)&session_id, 0, &thread_id);
             if (thread_handle == NULL)
             {
-                printf("tftp server : Thread creation failed with error: %lu\n", GetLastError());
+                show_error_and_wait("Thread creation failed", GetLastError());
             }
             else
             {
@@ -133,7 +141,7 @@ void start_tftp_server() {
             }
             else
             {
-                printf("tftp server : Can't start the write session\n");
+                show_error_and_wait("Can't start the write session", 0);
                 continue;
             }
             memset(&sessions[session_id], 0, sizeof(sessions[session_id]));
@@ -143,7 +151,7 @@ void start_tftp_server() {
             thread_handle = CreateThread(NULL, 0, WRQ_func, (LPVOID)&session_id, 0, &thread_id);
             if (thread_handle == NULL)
             {
-                printf("tftp server : Thread creation failed with error: %lu\n", GetLastError());
+                show_error_and_wait("Thread creation failed", GetLastError());
             }
             else
             {
