@@ -13,6 +13,8 @@ void init_session_table();
 void log_session_start(uint32_t index_count, session_t *session);
 void log_session_progress(uint32_t index_count, session_t *session, uint32_t bytes);
 void log_session_complete(uint32_t index_count, session_t *session, uint32_t total_bytes);
+void start_session_timer(session_t *session);
+void end_session_timer(session_t *session);
 
 
 #endif // TFTP_UTILS_H

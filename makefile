@@ -41,8 +41,17 @@ $(OBJ_DIR):
 
 # Clean up generated files
 clean:
-	rm -rf $(OBJ_DIR) $(TARGET) $(DEPS)
-	rm -f $(RES_OBJS)
+	@if exist $(OBJ_DIR) rmdir /S /Q $(OBJ_DIR)
+	@if exist $(TARGET).exe del /Q $(TARGET).exe
+	@if exist $(TARGET) del /Q $(TARGET)
+	@for %%f in ($(DEPS)) do if exist %%f del /Q %%f
+	@for %%f in ($(RES_OBJS)) do if exist %%f del /Q %%f
+realclean: clean
+	@if exist $(OBJ_DIR) rmdir /S /Q $(OBJ_DIR)
+	@if exist $(TARGET).exe del /Q $(TARGET).exe
+	@if exist $(TARGET) del /Q $(TARGET)
+	@for %%f in ($(DEPS)) do if exist %%f del /Q %%f
+	@for %%f in ($(RES_OBJS)) do if exist %%f del /Q %%f
 
 # Include dependency files
 -include $(DEPS)

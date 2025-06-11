@@ -67,6 +67,8 @@ DWORD WINAPI WRQ_func(LPVOID arg)
     uint32_t retries = 0;
     const uint32_t max_retries = RECV_RETRIES;
 
+     start_session_timer(&sessions[index]);
+
     socket_fd_s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
     if (socket_fd_s == INVALID_SOCKET)
@@ -211,6 +213,12 @@ DWORD WINAPI WRQ_func(LPVOID arg)
                 ack_packet = (ack_pkt *)lillte_buf;
                 ack_packet->opcode = htons(ACK);
 
+                // After sending/receiving block 65535
+                if (block_number > 65535)
+                {
+                    block_number = 0; 
+                }
+
                 if (block == block_number)
                 {
                     if (write_buffer_pos + block_write <= MAX_READ_SIZE)
@@ -237,6 +245,7 @@ DWORD WINAPI WRQ_func(LPVOID arg)
                         {
                             fwrite(write_buffer, 1, write_buffer_pos, fp);
                         };
+                        end_session_timer(&sessions[index]);
                         log_session_complete(sessions[index].index_count, &sessions[index], total_bytes);
                         WRITE_SESSION_CLOSE(fp, socket_fd_s, index);
                     }

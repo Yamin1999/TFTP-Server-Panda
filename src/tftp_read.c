@@ -53,7 +53,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
     int block_number = 1;
 
     uint32_t block_size = sessions[index].block_size;
-    uint32_t tsize = atoi((const char *)sessions[index].tsize);
+    //uint32_t tsize = atoi((const char *)sessions[index].tsize);
 
     uint16_t block, error_code;
     uint8_t error_message[LITTLE_BUF];
@@ -62,6 +62,8 @@ DWORD WINAPI RRQ_func(LPVOID arg)
 
     uint32_t retries = 0;
     const uint32_t max_retries = RECV_RETRIES;
+
+    start_session_timer(&sessions[index]);
 
     socket_fd_s = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 
@@ -175,6 +177,12 @@ DWORD WINAPI RRQ_func(LPVOID arg)
             memset(block_space, 0, (block_size + 100) * sizeof(char));
             memcpy(block_space, position, block_read);
 
+            // After sending/receiving block 65535
+            if (block_number > 65535)
+            {
+                block_number = 0; 
+            }
+
             tftp_send_data(socket_fd_s, block_number, (uint8_t *)block_space, block_read, &client_address, clen);
 
             position += block_read;
@@ -246,7 +254,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
                 ack_packet = (ack_pkt *)buff;
                 block = ntohs(ack_packet->block_number);
 
-                if (block == 0)
+                if (block == 0 && sessions[index].option_flag)
                 {
                     sessions[index].option_flag = 0;
                     continue;
@@ -273,7 +281,7 @@ DWORD WINAPI RRQ_func(LPVOID arg)
                     // time_t t;
                     // time(&t);
                     // printf("\nSession %d : Transfer complete %d bytes from Panda at: %s\n", index, total_byte, ctime(&t));
-
+                    end_session_timer(&sessions[index]);
                     log_session_complete(sessions[index].index_count, &sessions[index], total_byte);
                     READ_SESSION_CLOSE(fp, socket_fd_s, index);
                 }

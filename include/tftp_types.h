@@ -90,7 +90,7 @@
         return 0;                                             \
     } while (0)
 
-#define println() printf("-----------------------------------------------------------------------------------------------------------------\n")
+#define println() printf("-------------------------------------------------------------------------------------------------------------\n")
 
 
 #pragma pack(push, 1) // Disable structure member alignment
@@ -130,18 +130,20 @@ typedef struct option_packet
 typedef struct sesion_headr
 {
     struct sockaddr_in client_adderess;
-    uint8_t filename[MAX_FILENAME_SIZE];
-    uint8_t transfer_mode[TRANSFER_MODE_SIZE];
-    uint8_t option[50];
-    uint32_t option_flag;
-    uint8_t tsize[20];
-    uint32_t option_len;
-    uint32_t block_size;
-    uint32_t timeout;
-    uint32_t current_block;
-    uint32_t session_id;
-    uint32_t index_count;
-    uint32_t operation;
+    uint8_t     filename[MAX_FILENAME_SIZE];
+    uint8_t     transfer_mode[TRANSFER_MODE_SIZE];
+    uint8_t     option[50];
+    uint32_t    option_flag;
+    uint8_t     tsize[20];
+    uint32_t    option_len;
+    uint32_t    block_size;
+    uint32_t    timeout;
+    uint32_t    current_block;
+    uint32_t    session_id;
+    uint32_t    index_count;
+    uint32_t    operation;
+    time_t      start_time;    
+    time_t      end_time;      
     // time_t last_send_time;
 } session_t;
 

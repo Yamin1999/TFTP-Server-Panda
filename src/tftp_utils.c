@@ -7,9 +7,9 @@
  *                  TFTP server, including processing read and write requests and managing
  *                  client sessions.
  *
- *        Version:  1.0.1
+ *        Version:  1.0.2
  *        Created:  Sat Aug 10 10:17:38 2024
- *       Revision:  1.0.1
+ *       Revision:  1.0.2 - Added transfer duration tracking
  *       Compiler:  gcc
  *
  *         Author:  Yamin Haque, R&D Engineer, yamin.haque@bdcom.com.cn
@@ -44,22 +44,6 @@ void printPANDA()
     printf("                                       |  __// ___ \\| |\\  | | |_| / ___ \\ \n");
     printf("                                       |_|  /_/   \\_\\_| \\_| |____/_/   \\_\\\n");
 }
-
-void printHeader()
-{
-    printf("\n+------------------------------------------------------+\n");
-    printf("|                     Panda v1.0.1                     |\n");
-    printf("+------------------------------------------------------+\n");
-    printf("|                                                      |\n");
-    printf("|   Md. Yamin Haque                                    |\n");
-    printf("|   R&D Engineer                                       |\n");
-    printf("|   Shanghai BDCOM Information Technology Co., Ltd.    |\n");
-    printf("|   Bangladesh Office                                  |\n");
-    printf("|   yamin.haque@bdcom.com.cn                           |\n");
-    printf("|                                                      |\n");
-    printf("+------------------------------------------------------+\n");
-}
-
 void setColor(int colorCode)
 {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -87,9 +71,9 @@ void print_progress_write(size_t count, size_t max, int index)
 }
 
 void init_session_table() {
-    printf("\n=================================================================================================================");
-    printf("\n| No |    Filename                                     |   Client IP       | Op     | Bytes      | Time         |");
-    printf("\n=================================================================================================================");
+    printf("\n=============================================================================================================");
+    printf("\n| No |    Filename                                     |   Client IP       | Op     | Bytes      | Duration |");
+    printf("\n=============================================================================================================");
     printf("\n");
 }
 
@@ -102,33 +86,64 @@ void format_time(char *buffer, size_t size) {
     strftime(buffer, size, "%I:%M:%S %p", time_info);
 }
 
-void log_session_progress(uint32_t index_count, session_t *session, uint32_t bytes) {
-    char time_str[20];
-    format_time(time_str, sizeof(time_str));
+void format_duration(char *buffer, size_t buffer_size, double duration_seconds) {
+    if (duration_seconds < 1.0) {
+        snprintf(buffer, buffer_size, "%.0f ms", duration_seconds * 1000);
+    } else if (duration_seconds < 60.0) {
+        snprintf(buffer, buffer_size, "%.2f s", duration_seconds);
+    } else {
+        int minutes = (int)(duration_seconds / 60);
+        double seconds = duration_seconds - (minutes * 60);
+        snprintf(buffer, buffer_size, "%dm %.1fs", minutes, seconds);
+    }
+}
 
-    printf("\r| %-3d|    %-44s |   %-15s | %-6s | %-10d | %-12s |",
+double calculate_transfer_duration(session_t *session) {
+    return difftime(session->end_time, session->start_time);
+}
+
+void log_session_progress(uint32_t index_count, session_t *session, uint32_t bytes) {
+    // Use \r to return to beginning of line and overwrite
+    printf("\r| %-3d|    %-44s |   %-15s | %-6s | %-10d | %-8s |",
            index_count,
            session->filename,
            inet_ntoa(session->client_adderess.sin_addr),
            session->operation == READ ? "READ" : "WRITE",
            bytes,
-           time_str);
+           "---");
     fflush(stdout);
+    // Don't print newline - keep updating the same line
 }
 
 void log_session_complete(uint32_t index_count, session_t *session, uint32_t total_bytes) {
-    char time_str[20];
-    format_time(time_str, sizeof(time_str));
+    char duration_str[20];
+    
+    // Calculate and format duration
+    double duration = calculate_transfer_duration(session);
+    format_duration(duration_str, sizeof(duration_str), duration);
 
-    printf("\r| %-3d|    %-44s |   %-15s | %-6s | %-10d | %-12s |",
+    // Final update with duration, then add newline to move to next line
+    printf("\r| %-3d|    %-44s |   %-15s | %-6s | %-10d | %-8s |\n",
            index_count,
            session->filename,
            inet_ntoa(session->client_adderess.sin_addr),
            session->operation == READ ? "READ" : "WRITE",
            total_bytes,
-           time_str);
-    printf("\n-----------------------------------------------------------------------------------------------------------------\n");
+           duration_str);
+    
+    // Add separator line after each completed transfer
+    printf("-------------------------------------------------------------------------------------------------------------\n");
     fflush(stdout);
+}
+
+// Helper function to start timing a session
+void start_session_timer(session_t *session) {
+    time(&session->start_time);
+}
+
+// Helper function to end timing a session
+void end_session_timer(session_t *session) {
+    time(&session->end_time);
 }
 
 void send_error(SOCKET socket_f, uint16_t error_code, uint8_t *error_string, struct sockaddr_in *client_sock, int slen)
