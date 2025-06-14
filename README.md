@@ -12,18 +12,7 @@
            |  __// ___ \| |\  | | |_| / ___ \
            |_|  /_/   \_\_| \_| |____/_/   \_\
 
-+------------------------------------------------------+
-|                     Panda v1.0.2                     |
-+------------------------------------------------------+
-|                                                      |
-|   Md. Yamin Haque                                    |
-|   R&D Engineer                                       |
-|   Shanghai BDCOM Information Technology Co., Ltd.    |
-|   Bangladesh Office                                  |
-|   yamin.haque@bdcom.com.cn                           |
-|                                                      |
-+------------------------------------------------------+
-TFTP server : Panda listening on port 69
+
 ```
 ---
 ## Description
@@ -65,17 +54,6 @@ Example session table:
 -------------------------------------------------------------------------------------------------------------
 ```
 
-### Progress Display Examples
-
-**Write Progress:**
-```
-Session 0 : Received 6887 blocks: 3525996 bytes
-```
-
-**Read Progress:**
-```
-Session 0 : Progress: [##################################################] 100.00%
-```
 
 ### Potential Upcoming Features
 
@@ -147,8 +125,6 @@ Session 0 : Progress: [##################################################] 100.0
 
 ### Retransmission and Timeout
 ```
-Session 0 : Request for read file : switch.bin from 192.168.0.103
-Session 0 : Progress: [##################                                ] 37.55%
 Session 0 : TFTP timeout!
 ```
 
@@ -156,20 +132,23 @@ Session 0 : TFTP timeout!
 
 **Unsupported mode (netascii):**
 ```
-Session 0 : Request for read file : switch.bin from 192.168.0.103
-Session 0 : Only support octet mode!
+-------------------------------------------------------------------------------------------------------------
+| 1  |  Only support octet mode!
+-------------------------------------------------------------------------------------------------------------
 ```
 
 **File already exists (write):**
 ```
-Session 0 : Request for write file : switch.bin from 192.168.0.103
-Session 0 : File switch.bin is already exists in the current directory.
+-------------------------------------------------------------------------------------------------------------
+| 1  |  File switch.bin is already exists in the current directory.
+-------------------------------------------------------------------------------------------------------------
 ```
 
 **File not found (read):**
 ```
-Session 0 : Request for read file : switch.tar from 192.168.0.103
-Session 0 : File switch.tar does not exist in the current directory.
+-------------------------------------------------------------------------------------------------------------
+| 1  |  File switch.tar does not exist in the current directory.
+-------------------------------------------------------------------------------------------------------------
 ```
 
 ## Version History
